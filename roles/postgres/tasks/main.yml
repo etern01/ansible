@@ -32,7 +32,7 @@
   community.postgresql.postgresql_db:
     name: "{{DB_NAME}}"
 
-- name: Connect to  database, create user
+- name: Connect to  database and create user
   become: true
   become_user: postgres
   become_method: su
@@ -42,7 +42,7 @@
     password: "{{DB_PASSWORD}}"
     priv: ALL
 
-- name: GRANT ALL PRIVILEGES ON DATABASE postgres_user TO postgres_db
+- name: GRANT ALL PRIVILEGES ON DATABASE "{{DB_USER}}" TO "{{DB_NAME}}"
   become: true
   become_user: postgres
   become_method: su
@@ -52,7 +52,7 @@
     type: database
     role: "{{DB_USER}}"
     
-- name: Revoke access from local user mary on database mydb
+- name: Revoke access method ident
   become: true
   become_user: postgres
   become_method: su
@@ -67,7 +67,7 @@
   notify: Reload PostgreSQL
 
 
-- name: Grant some_user access to some_db, comment that and keep other rule-specific comments attached to their rules
+- name: Grant "{{DB_USER}}" access to "{{DB_NAME}}", comment that and keep other rule-specific comments attached to their rules
   become: true
   become_user: postgres
   become_method: su
