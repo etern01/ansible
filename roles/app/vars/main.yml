@@ -1,0 +1,15 @@
+---
+# vars file for ansible
+
+
+app_pakages: 
+  - epel-release
+  - "@Development Tools"
+  - nodejs
+  - libxslt-devel
+  - centos-release-scl-rh 
+  - centos-release-scl
+  - postgresql-devel
+  
+
+

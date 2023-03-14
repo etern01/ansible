@@ -1,0 +1,16 @@
+[Unit]
+Description=Puma HTTP Server Accept Sockets
+
+[Socket]
+SocketUser=app
+SocketGroup=app
+# SocketUser, SocketGroup, etc. may be needed for Unix domain sockets
+ListenStream=/var/run/puma.sock
+
+# Socket options matching Puma defaults
+NoDelay=true
+ReusePort=true
+Backlog=1024
+
+[Install]
+WantedBy=sockets.target

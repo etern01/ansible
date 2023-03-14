@@ -1,0 +1,38 @@
+# /etc/systemd/system/{{app_name}}.service
+# systemctl enable {{app_name}}
+# systemctl start {{app_name}}
+
+[Unit]
+Description=Rails Puma Webserver {{app_name}}
+Wants=network-online.target app.socket
+After=network.target network-online.target
+ 
+[Service]
+Type=fork
+
+User=app
+Group=app
+
+Environment="PATH="/opt/rh/rh-ruby26/root/usr/local/bin:/opt/rh/rh-ruby26/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin""
+Environment="LD_LIBRARY_PATH=/opt/rh/rh-ruby26/root/usr/lib64"
+Environment="PKG_CONFIG_PATH=/opt/rh/rh-ruby26/root/usr/local/lib64/pkgconfig"
+Environment="XDG_DATA_DIRS=/opt/rh/rh-ruby26/root/usr/local/share"
+Environment="SECRET_KEY_BASE={{SECRET_KEY_BASE}}"
+Environment="RAILS_LOG_TO_STDOUT=1"
+Environment="RAILS_ENV=production"
+Environment="DB_HOST={{DB_HOST}}"
+Environment="DB_USER={{DB_USER}}"
+Environment="DB_USER={{DB_USER}}"
+Environment="DB_PASSWORD={{DB_PASSWORD}}"
+Environment="DB_NAME={{DB_NAME}}"
+Environment="DB_PORT=5432"
+
+
+WorkingDirectory=/app/{{app_name}}
+
+ExecStart=/opt/rh/rh-ruby26/root/usr/local/bin/bundle exec /opt/rh/rh-ruby26/root/usr/bin/puma -b unix:///var/run/puma.sock -e $RAILS_ENV config.ru
+TimeoutSec=15
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

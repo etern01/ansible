@@ -1,0 +1,140 @@
+---
+# tasks file for ansible
+
+
+- name: Install the latest version of packages
+  ansible.builtin.yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - "{{ app_pakages }}"
+
+- name: create app group exists
+  ansible.builtin.group:
+    name: app
+    state: present
+
+- name: Add the user app
+  ansible.builtin.user:
+    name: app
+    shell: /bin/bash
+    group: app
+
+- name: Create a directory for app if it does not exist
+  ansible.builtin.file:
+    path: /app
+    state: directory
+    owner: app
+    group: app
+    mode: '0755'
+
+- name: Download app sources
+  unarchive:
+    src: "./files/{{app_name}}.tar.gz"
+    dest: /app/
+    owner: app
+    group: app
+    mode: '0755'
+
+- name: Install the Ruby repo from centos-sclo-rh
+  ansible.builtin.yum:
+    name: 
+      - rh-ruby26
+      - rh-ruby26-ruby-devel.x86_64
+    enablerepo: centos-sclo-rh
+    state: present
+
+- name: Creating a file for ruby work
+  copy:
+    dest: "/etc/profile.d/ruby.sh"
+    content: |
+        #!/bin/bash
+        source /opt/rh/rh-ruby26/enable
+
+- name: install bundle 
+
+  ansible.builtin.shell: /opt/rh/rh-ruby26/root/usr/bin/gem install bundler:1.16.2
+  args:
+    chdir: "/app/{{app_name}}/"
+  ignore_errors: true
+
+
+- name: configure bundle 
+
+  ansible.builtin.shell: /opt/rh/rh-ruby26/root/usr/local/bin/bundle config build.nokogiri --use-system-libraries
+  args:
+    chdir: "/app/{{app_name}}/"
+  
+ 
+
+- name: install ruby dependencies
+  
+  ansible.builtin.shell:  /opt/rh/rh-ruby26/root/usr/local/bin/bundle install --clean --no-cache --without development
+  args:
+    chdir: "/app/{{app_name}}/"
+  ignore_errors: true
+
+#- name: Create environment file
+#  template: 
+#    src=app.env.j2 
+#    dest="/app/{{app_name}}/run.sh"
+
+- name: Check database access 
+  community.postgresql.postgresql_ping:
+      db: "{{DB_NAME}}"
+      login_host: "{{DB_HOST}}"
+      login_user: "{{DB_USER}}"
+      login_password: "{{DB_PASSWORD}}"
+  register: chek_db_result
+
+- name: Check that db migrate
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_query:
+    db: "{{DB_NAME}}"
+    query: "SELECT * FROM information_schema.tables where table_name = 'pastes';"
+  register: check_db_migrate
+
+- name: DB migrate 
+  become: true
+  become_user: app
+  become_method: su
+  vars:
+    app_env:
+      SECRET_KEY_BASE : "{{SECRET_KEY_BASE}}"
+      RAILS_ENV: production
+      RAILS_LOG_TO_STDOUT: 1
+      DB_HOST: "{{DB_HOST}}"
+      DB_PORT: "{{DB_PORT}}"
+      DB_NAME: "{{DB_NAME}}"
+      DB_USER: "{{DB_USER}}"
+      DB_PASSWORD: "{{DB_PASSWORD}}"
+  ansible.builtin.shell: /opt/rh/rh-ruby26/root/usr/local/bin/bundle exec rake db:migrate
+  args:
+    chdir: "/app/{{app_name}}/"
+  environment: "{{app_env}}"
+  when: check_db_migrate.rowcount == 0
+
+
+- name:  Create socket file for app
+  template: 
+    src=app.socket.j2 
+    dest=/etc/systemd/system/app.socket
+  notify:
+    - reload systemctl
+
+- name: Create Unit file for app
+  template: 
+    src=app.service.j2 
+    dest=/etc/systemd/system/app.service 
+    mode=644
+  notify:
+    - reload systemctl
+
+- name: Start and enabled service
+  service: 
+    name=app.service 
+    state=restarted 
+    enabled=yes
+

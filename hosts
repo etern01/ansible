@@ -1,0 +1,6 @@
+[db]
+172.16.10.15 ansible_user=root 
+[app]
+172.16.10.15 ansible_user=root 
+[proxy]
+172.16.10.15 ansible_user=root

@@ -1,0 +1,89 @@
+---
+# tasks file for postgres
+- name: Install packages
+  ansible.builtin.yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ postgres_pakages }}"
+
+- name: install interpreter python3
+  ansible.builtin.set_fact:
+    ansible_python_interpreter: /usr/bin/python3
+
+- name: Check if PostgreSQL is initialized
+  ansible.builtin.stat:
+   path: "/var/lib/pgsql/data/pg_hba.conf"
+  register: postgres_data
+
+- name: Initialize PostgreSQL
+  ansible.builtin.shell: "postgresql-setup initdb"
+  when: not postgres_data.stat.exists
+
+- name: Start and enable service
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Create database
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_db:
+    name: "{{DB_NAME}}"
+
+- name: Connect to  database, create user
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_user:
+    db: "{{DB_NAME}}"
+    name: "{{DB_USER}}"
+    password: "{{DB_PASSWORD}}"
+    priv: ALL
+
+- name: GRANT ALL PRIVILEGES ON DATABASE postgres_user TO postgres_db
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_privs:
+    db: "{{DB_NAME}}"
+    privs: all
+    type: database
+    role: "{{DB_USER}}"
+    
+- name: Revoke access from local user mary on database mydb
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_pg_hba:
+    dest: /var/lib/pgsql/data/pg_hba.conf
+    contype: host
+    users: all
+    databases: all
+    source: 127.0.0.1/32
+    method: ident
+    state: absent
+  notify: Reload PostgreSQL
+
+
+- name: Grant some_user access to some_db, comment that and keep other rule-specific comments attached to their rules
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_pg_hba:
+    dest: /var/lib/pgsql/data/pg_hba.conf
+    contype: host
+    users: "{{DB_USER}}"
+    databases: "{{DB_NAME}}"
+    method: md5
+    source: 0.0.0.0/0
+    keep_comments_at_rules: true
+    comment: "App access to database"
+  
+  notify: Reload PostgreSQL
+  
+- name: Restart postgres
+  service: 
+    name=postgresql 
+    state=reloaded

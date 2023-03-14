@@ -1,0 +1,11 @@
+---
+# vars file for postgres
+postgres_pakages:
+  - epel-release
+  - python3
+  - postgresql
+  - postgresql-server
+  - postgresql-contrib
+  - postgresql-libs
+  - python3-psycopg2
+  
