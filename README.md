@@ -6,7 +6,9 @@ Role Name
 Requirements
 ------------
 
-ОС Centos 7
+ОС Centos 7!
+
+
 
 Role Variables
 --------------
